@@ -2,7 +2,7 @@
 import roslib; roslib.load_manifest('roboint')
 import rospy
 import tf
-from math import sin, cos
+from math import sin, cos, pi
 from geometry_msgs.msg import Twist, TransformStamped, Point32
 from sensor_msgs.msg import PointCloud
 from nav_msgs.msg import Odometry
@@ -21,10 +21,12 @@ class RoboExplorer:
 		self.pub_cloud = rospy.Publisher("point_cloud", PointCloud)
 		self.pub_odom = rospy.Publisher("odom", Odometry)
 
+		self.wheel_dist = 0.188 # 18.8cm
+		self.wheel_size = 0.052*0.5 # 5.1cm gear ration=0.5
 		self.speed = (0, 0)
 		self.x = 0
 		self.y = 0
-		self.th = 0
+		self.alpha = 0
 		self.last_in = [0, 0]
 		self.odom_broadcaster = tf.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
@@ -34,12 +36,6 @@ class RoboExplorer:
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
 
-		cloud = PointCloud()
-		cloud.header.stamp = current_time
-		cloud.header.frame_id = "sensor_frame"
-		cloud.points.append(Point32(msg.d1/10.0, 0, 0))
-		self.pub_cloud.publish(cloud)
-
 		dt = (current_time - self.last_time).to_sec();
 		in_now = msg.input[1:3]
 		in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
@@ -48,35 +44,32 @@ class RoboExplorer:
 		if self.speed[1] < 0:
 			in_diff[1] = -in_diff[1]
 
-		self.diff_to_angle = 0.1 # TODO
-		diff_si = in_diff # TODO
+		dist_dir = (in_diff[1] - in_diff[0])*self.wheel_size*pi/8
+		delta_alpha = dist_dir/self.wheel_dist
 
-		delta_th = (diff_si[0] - diff_si[1]) * self.diff_to_angle
-		self.th += delta_th
+		dist = (in_diff[0] + in_diff[1])/2.0*self.wheel_size*pi/8
 
-		movement = (diff_si[0] + diff_si[1])/2.0
-		delta_x = cos(self.th)*movement
-		delta_y = sin(self.th)*movement
+		delta_x = cos(self.alpha + delta_alpha/2)*dist
+		delta_y = sin(self.alpha + delta_alpha/2)*dist
+
+		self.alpha += delta_alpha
+		if self.alpha > 2*pi:
+			self.alpha -= 2*pi
+		elif self.alpha < -2*pi:
+			self.alpha += 2*pi
 		self.x += delta_x
 		self.y += delta_y
 
 		# speeds
 		vx = delta_x / dt
 		vy = delta_y / dt
-		vth = delta_th / dt
+		valpha = delta_alpha / dt
+
+		# since all odometry is 6DOF we'll need a quaternion created from yaw
+		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
 
 		# first, we'll publish the transform over tf
-		odom_trans = TransformStamped()
-		odom_trans.header.stamp = current_time
-		odom_trans.header.frame_id = "odom"
-		odom_trans.child_frame_id = "base_link"
-		odom_trans.transform.translation.x = self.x
-		odom_trans.transform.translation.y = self.y
-		odom_trans.transform.translation.z = 0.0
-		odom_trans.transform.rotation = self.th
-
-		## send the transform
-		#self.odom_broadcaster.sendTransform(odom_trans);
+		self.odom_broadcaster.sendTransform((0.0, 0.0, 0.0), odom_quat, current_time, "odom", "base_link");
 
 		# next, we'll publish the odometry message over ROS
 		odom = Odometry()
@@ -87,16 +80,23 @@ class RoboExplorer:
 		odom.pose.pose.position.x = self.x
 		odom.pose.pose.position.y = self.y
 		odom.pose.pose.position.z = 0.0
-		odom.pose.pose.orientation = self.th
+		odom.pose.pose.orientation = odom_quat
 
 		# set the velocity
 		odom.child_frame_id = "base_link";
 		odom.twist.twist.linear.x = vx
 		odom.twist.twist.linear.y = vy
-		odom.twist.twist.angular.z = vth
+		odom.twist.twist.angular.z = valpha
 
 		# publish the message
 		self.pub_odom.publish(odom)
+		
+		# sent PointCloud
+		cloud = PointCloud()
+		cloud.header.stamp = current_time
+		cloud.header.frame_id = "sensor_frame"
+		cloud.points.append(Point32(msg.d1/10.0, 0, 0))
+		self.pub_cloud.publish(cloud)
 
 		self.last_time = current_time
 		self.last_in = in_now
