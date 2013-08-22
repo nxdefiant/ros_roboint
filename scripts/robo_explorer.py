@@ -36,6 +36,12 @@ class RoboExplorer:
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
 
+		self.send_odometry(msg, current_time)
+		self.send_point_cloud(msg, current_time)
+
+		self.last_time = current_time
+
+	def send_odometry(self, msg, current_time):
 		dt = (current_time - self.last_time).to_sec();
 		in_now = msg.input[1:3]
 		in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
@@ -44,10 +50,10 @@ class RoboExplorer:
 		if self.speed[1] < 0:
 			in_diff[1] = -in_diff[1]
 
-		dist_dir = (in_diff[1] - in_diff[0])*self.wheel_size*pi/8
+		dist_dir = (in_diff[1] - in_diff[0])*self.wheel_size*pi/8 # steps_changed in different direction => m
 		delta_alpha = dist_dir/self.wheel_dist
 
-		dist = (in_diff[0] + in_diff[1])/2.0*self.wheel_size*pi/8
+		dist = (in_diff[0] + in_diff[1])/2.0*self.wheel_size*pi/8 # steps_changed same direction => m
 
 		delta_x = cos(self.alpha + delta_alpha/2)*dist
 		delta_y = sin(self.alpha + delta_alpha/2)*dist
@@ -59,6 +65,7 @@ class RoboExplorer:
 			self.alpha += 2*pi
 		self.x += delta_x
 		self.y += delta_y
+		self.last_in = in_now
 
 		# speeds
 		vx = delta_x / dt
@@ -91,27 +98,36 @@ class RoboExplorer:
 		# publish the message
 		self.pub_odom.publish(odom)
 		
-		# sent PointCloud
+	def send_point_cloud(self, msg, current_time):
 		cloud = PointCloud()
 		cloud.header.stamp = current_time
 		cloud.header.frame_id = "sensor_frame"
 		cloud.points.append(Point32(msg.d1/10.0, 0, 0))
 		self.pub_cloud.publish(cloud)
 
-		self.last_time = current_time
-		self.last_in = in_now
-
-
+	# test with rostopic pub -1 cmd_vel geometry_msgs/Twist '[0, 0, 0]' '[0, 0, 0]'
 	def cmdVelReceived(self, msg):
 		trans = msg.linear.x
-		rot = msg.angular.z
+		rot = msg.angular.z # rad/s
 
-		# speed steps = 7
-		# max trans = 0.1m/s
-		# max rot = 0.29rad/s
+		# handle rotation as offset to speeds
+		speed_offset = (rot * self.wheel_dist)/2.0 # m/s
 
-		speed_l = int(trans*7/0.1 - rot*7/0.29)
-		speed_r = int(trans*7/0.1 + rot*7/0.29)
+		# handle translation
+		speed_l = 0
+		wish_speed_left = trans - speed_offset
+		if abs(wish_speed_left) > 0:
+			speed_l = 64.3*abs(wish_speed_left) - 1.7
+			if wish_speed_left < 0:
+				speed_l*=-1
+		speed_r = 0
+		wish_speed_right = trans + speed_offset
+		if abs(wish_speed_right) > 0:
+			speed_r = 64.3*abs(wish_speed_right) - 1.7
+			if wish_speed_right < 0:
+				speed_r*=-1
+
+		# check limits
 		if speed_l < -7: speed_l = -7
 		elif speed_l > 7: speed_l = 7
 		if speed_r < -7: speed_r = -7
@@ -119,12 +135,12 @@ class RoboExplorer:
 
 		outmsg = Motor()
 		outmsg.num = 1
-		outmsg.speed = speed_l
+		outmsg.speed = round(speed_l)
 		self.pub_motor.publish(outmsg)
 		
 		outmsg = Motor()
 		outmsg.num = 2
-		outmsg.speed = speed_r
+		outmsg.speed = round(speed_r)
 		self.pub_motor.publish(outmsg)
 
 		self.speed = (speed_l, speed_r)
