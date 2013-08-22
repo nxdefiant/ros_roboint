@@ -116,13 +116,13 @@ class RoboExplorer:
 		# handle translation
 		speed_l = 0
 		wish_speed_left = trans - speed_offset
-		if abs(wish_speed_left) > 0:
+		if abs(wish_speed_left) > 1.7/64.3:
 			speed_l = 64.3*abs(wish_speed_left) - 1.7
 			if wish_speed_left < 0:
 				speed_l*=-1
 		speed_r = 0
 		wish_speed_right = trans + speed_offset
-		if abs(wish_speed_right) > 0:
+		if abs(wish_speed_right) > 1.7/64.3:
 			speed_r = 64.3*abs(wish_speed_right) - 1.7
 			if wish_speed_right < 0:
 				speed_r*=-1
