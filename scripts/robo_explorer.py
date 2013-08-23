@@ -4,7 +4,7 @@ import rospy
 import tf
 from math import sin, cos, pi
 from geometry_msgs.msg import Twist, TransformStamped, Point32
-from sensor_msgs.msg import PointCloud
+from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from roboint.msg import Motor
 from roboint.msg import Inputs
@@ -18,7 +18,7 @@ class RoboExplorer:
 		rospy.Subscriber("ft/get_inputs", Inputs, self.inputsReceived)
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
-		self.pub_cloud = rospy.Publisher("point_cloud", PointCloud)
+		self.pub_scan = rospy.Publisher("base_scan", LaserScan)
 		self.pub_odom = rospy.Publisher("odom", Odometry)
 
 		self.wheel_dist = 0.188 # 18.8cm
@@ -28,7 +28,7 @@ class RoboExplorer:
 		self.y = 0
 		self.alpha = 0
 		self.last_in = [0, 0]
-		self.odom_broadcaster = tf.TransformBroadcaster()
+		self.tf_broadcaster = tf.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
 
 		rospy.spin()
@@ -37,7 +37,7 @@ class RoboExplorer:
 		current_time = rospy.Time.now()
 
 		self.send_odometry(msg, current_time)
-		self.send_point_cloud(msg, current_time)
+		self.send_laser_scan(msg, current_time)
 
 		self.last_time = current_time
 
@@ -76,7 +76,7 @@ class RoboExplorer:
 		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
 
 		# first, we'll publish the transform over tf
-		self.odom_broadcaster.sendTransform((0.0, 0.0, 0.0), odom_quat, current_time, "odom", "base_link");
+		self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), odom_quat, current_time, "odom", "base_link");
 
 		# next, we'll publish the odometry message over ROS
 		odom = Odometry()
@@ -98,12 +98,26 @@ class RoboExplorer:
 		# publish the message
 		self.pub_odom.publish(odom)
 		
-	def send_point_cloud(self, msg, current_time):
-		cloud = PointCloud()
-		cloud.header.stamp = current_time
-		cloud.header.frame_id = "sensor_frame"
-		cloud.points.append(Point32(msg.d1/10.0, 0, 0))
-		self.pub_cloud.publish(cloud)
+	def send_laser_scan(self, msg, current_time):
+		# first, we'll publish the transform over tf
+		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "base_link", "base_scan");
+
+		# actually ultra sonic range finder
+		scan = LaserScan()
+		scan.header.stamp = current_time
+		scan.header.frame_id = "base_link"
+		scan.angle_min = -pi/4;
+		scan.angle_max = pi/4;
+		scan.angle_increment = pi/4;
+		scan.time_increment = 0.01;
+		scan.range_min = 0.0;
+		scan.range_max = 4.0;
+		for i in range(3):
+			scan.ranges.append(msg.d1/100.0)
+		scan.intensities.append(0.5)
+		scan.intensities.append(1.0)
+		scan.intensities.append(0.5)
+		self.pub_scan.publish(scan)
 
 	# test with rostopic pub -1 cmd_vel geometry_msgs/Twist '[0, 0, 0]' '[0, 0, 0]'
 	def cmdVelReceived(self, msg):
