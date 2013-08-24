@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	 * buffer up before throwing some away.
 	 */
 	ros::Publisher chatter_pub = n.advertise<roboint::Inputs>("ft/get_inputs", 1000);
-	ros::Rate loop_rate(5);
+	ros::Rate loop_rate(100);
 
 	while(ros::ok()) {
 		roboint::Inputs msg;
