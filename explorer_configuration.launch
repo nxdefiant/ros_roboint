@@ -1,0 +1,9 @@
+<launch>
+	<node pkg="roboint" type="libft_adapter" name="libft_adapter" output="screen">
+		<param name="odom_param" value="param_value" />
+	</node>
+
+	<node pkg="roboint" type="robo_explorer.py" name="robo_explorer" output="screen">
+		<param name="sensor_param" value="param_value" />
+	</node>
+</launch>
