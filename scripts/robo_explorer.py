@@ -18,7 +18,7 @@ class RoboExplorer:
 		rospy.Subscriber("ft/get_inputs", Inputs, self.inputsReceived)
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
-		self.pub_scan = rospy.Publisher("base_scan", LaserScan)
+		self.pub_scan = rospy.Publisher("scan", LaserScan)
 		self.pub_odom = rospy.Publisher("odom", Odometry)
 
 		self.wheel_dist = 0.188 # 18.8cm
@@ -36,6 +36,7 @@ class RoboExplorer:
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
 
+		self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "map", "base_link");
 		self.send_odometry(msg, current_time)
 		self.send_laser_scan(msg, current_time)
 
@@ -72,22 +73,25 @@ class RoboExplorer:
 		vy = delta_y / dt
 		valpha = delta_alpha / dt
 
-		# since all odometry is 6DOF we'll need a quaternion created from yaw
-		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
-
 		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), odom_quat, current_time, "odom", "base_link");
+		self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "odom", "base_link");
 
 		# next, we'll publish the odometry message over ROS
 		odom = Odometry()
 		odom.header.stamp = current_time
-		odom.header.frame_id = "odom"
+		odom.header.frame_id = "/odom"
+
+		# since all odometry is 6DOF we'll need a quaternion created from yaw
+		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
 
 		# set the position
 		odom.pose.pose.position.x = self.x
 		odom.pose.pose.position.y = self.y
 		odom.pose.pose.position.z = 0.0
-		odom.pose.pose.orientation = odom_quat
+		odom.pose.pose.orientation.x = odom_quat[0]
+		odom.pose.pose.orientation.y = odom_quat[1]
+		odom.pose.pose.orientation.z = odom_quat[2]
+		odom.pose.pose.orientation.w = odom_quat[3]
 
 		# set the velocity
 		odom.child_frame_id = "base_link";
@@ -100,12 +104,12 @@ class RoboExplorer:
 		
 	def send_laser_scan(self, msg, current_time):
 		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "base_link", "base_scan");
+		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "base_link", "scan");
 
 		# actually ultra sonic range finder
 		scan = LaserScan()
 		scan.header.stamp = current_time
-		scan.header.frame_id = "base_link"
+		scan.header.frame_id = "/scan"
 		scan.angle_min = -pi/4;
 		scan.angle_max = pi/4;
 		scan.angle_increment = pi/4;
