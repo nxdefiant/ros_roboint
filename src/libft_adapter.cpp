@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "roboint.h"
 #include "ros/ros.h"
 #include "roboint/Output.h"
@@ -20,14 +21,15 @@ void cb_set_output(const ::roboint::OutputConstPtr& msg) {
 
 void cb_set_motor(const ::roboint::MotorConstPtr& msg) {
 	unsigned char iDirection = 0;
+	int speed = abs(msg->speed);
 
 	if (msg->speed > 0) iDirection = 0x1;
 	else if (msg->speed < 0) iDirection = 0x2;
 
 	transfer_area->M_Main &= ~(3<<(msg->num-1)*2);
 	transfer_area->M_Main |= iDirection<<(msg->num-1)*2;
-	transfer_area->MPWM_Main[(msg->num-1)*2] = msg->speed;
-	transfer_area->MPWM_Main[(msg->num-1)*2 + 1] = msg->speed;
+	transfer_area->MPWM_Main[(msg->num-1)*2] = speed;
+	transfer_area->MPWM_Main[(msg->num-1)*2 + 1] = speed;
 }
 
 
@@ -92,7 +94,7 @@ int main(int argc, char **argv)
 	 * than we can send them, the number here specifies how many messages to
 	 * buffer up before throwing some away.
 	 */
-	ros::Publisher chatter_pub = n.advertise<roboint::Inputs>("ft/get_inputs", 1000);
+	ros::Publisher chatter_pub = n.advertise<roboint::Inputs>("ft/get_inputs", 10);
 	ros::Rate loop_rate(100);
 
 	while(ros::ok()) {

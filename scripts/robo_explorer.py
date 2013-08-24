@@ -23,6 +23,10 @@ class RoboExplorer:
 		self.last_in = None
 		self.tf_broadcaster = tf.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
+		self.input_count = 0
+		self.x_last = 0
+		self.y_last = 0
+		self.alpha_last = 0
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
 		self.pub_scan = rospy.Publisher("scan", LaserScan)
@@ -35,22 +39,28 @@ class RoboExplorer:
 
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
+		self.input_count+=1
 
-		self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "odom", "map");
-		self.send_odometry(msg, current_time)
-		self.send_laser_scan(msg, current_time)
+		self.update_odometry(msg, current_time)
+		if self.input_count >= 10:
+			self.input_count = 0
+			self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "odom", "map");
+			self.send_odometry(msg, current_time)
+			self.send_laser_scan(msg, current_time)
 
-		self.last_time = current_time
-
-	def send_odometry(self, msg, current_time):
-		dt = (current_time - self.last_time).to_sec();
+	def update_odometry(self, msg, current_time):
 		in_now = msg.input[1:3]
 		if self.last_in is not None:
 			in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
+			# fix in_diff from actual motor direction
 			if self.speed[0] < 0:
 				in_diff[0] = -in_diff[0]
+			elif self.speed[0] == 0:
+				in_diff[0] = 0
 			if self.speed[1] < 0:
 				in_diff[1] = -in_diff[1]
+			elif self.speed[1] == 0:
+				in_diff[1] = 0
 
 			dist_dir = (in_diff[1] - in_diff[0])*self.wheel_size*pi/8 # steps_changed in different direction => m
 			delta_alpha = dist_dir/self.wheel_dist
@@ -68,40 +78,47 @@ class RoboExplorer:
 			self.x += delta_x
 			self.y += delta_y
 
-			# speeds
-			vx = delta_x / dt
-			vy = delta_y / dt
-			valpha = delta_alpha / dt
-
-			# since all odometry is 6DOF we'll need a quaternion created from yaw
-			odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
-
-			# first, we'll publish the transform over tf
-			self.tf_broadcaster.sendTransform((self.x, self.y, 0.0), odom_quat, current_time, "base_link", "odom");
-
-			# next, we'll publish the odometry message over ROS
-			odom = Odometry()
-			odom.header.stamp = current_time
-			odom.header.frame_id = "/odom"
-
-			# set the position
-			odom.pose.pose.position.x = self.x
-			odom.pose.pose.position.y = self.y
-			odom.pose.pose.position.z = 0.0
-			odom.pose.pose.orientation.x = odom_quat[0]
-			odom.pose.pose.orientation.y = odom_quat[1]
-			odom.pose.pose.orientation.z = odom_quat[2]
-			odom.pose.pose.orientation.w = odom_quat[3]
-
-			# set the velocity
-			odom.child_frame_id = "base_link";
-			odom.twist.twist.linear.x = vx
-			odom.twist.twist.linear.y = vy
-			odom.twist.twist.angular.z = valpha
-
-			# publish the message
-			self.pub_odom.publish(odom)
 		self.last_in = in_now
+
+	def send_odometry(self, msg, current_time):
+		# speeds
+		dt = (current_time - self.last_time).to_sec()
+		vx = (self.x - self.x_last) / dt
+		vy = (self.y - self.y_last) / dt
+		valpha = (self.alpha - self.alpha_last) / dt
+		self.last_time = current_time
+		self.x_last = self.x
+		self.y_last = self.y
+		self.alpha_last = self.alpha
+
+		# since all odometry is 6DOF we'll need a quaternion created from yaw
+		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
+
+		# first, we'll publish the transform over tf
+		self.tf_broadcaster.sendTransform((self.x, self.y, 0.0), odom_quat, current_time, "base_link", "odom");
+
+		# next, we'll publish the odometry message over ROS
+		odom = Odometry()
+		odom.header.stamp = current_time
+		odom.header.frame_id = "/odom"
+
+		# set the position
+		odom.pose.pose.position.x = self.x
+		odom.pose.pose.position.y = self.y
+		odom.pose.pose.position.z = 0.0
+		odom.pose.pose.orientation.x = odom_quat[0]
+		odom.pose.pose.orientation.y = odom_quat[1]
+		odom.pose.pose.orientation.z = odom_quat[2]
+		odom.pose.pose.orientation.w = odom_quat[3]
+
+		# set the velocity
+		odom.child_frame_id = "base_link";
+		odom.twist.twist.linear.x = vx
+		odom.twist.twist.linear.y = vy
+		odom.twist.twist.angular.z = valpha
+
+		# publish the message
+		self.pub_odom.publish(odom)
 		
 	def send_laser_scan(self, msg, current_time):
 		# first, we'll publish the transform over tf
@@ -114,7 +131,7 @@ class RoboExplorer:
 		scan.angle_min = -pi/4;
 		scan.angle_max = pi/4;
 		scan.angle_increment = pi/4;
-		scan.time_increment = 0.01;
+		scan.time_increment = 0.1;
 		scan.range_min = 0.0;
 		scan.range_max = 4.0;
 		for i in range(3):
