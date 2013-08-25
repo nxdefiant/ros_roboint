@@ -44,7 +44,6 @@ class RoboExplorer:
 		self.update_odometry(msg, current_time)
 		if self.input_count >= 10:
 			self.input_count = 0
-			self.tf_broadcaster.sendTransform((0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "odom", "map");
 			self.send_odometry(msg, current_time)
 			self.send_laser_scan(msg, current_time)
 
@@ -95,7 +94,7 @@ class RoboExplorer:
 		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
 
 		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((self.x, self.y, 0.0), odom_quat, current_time, "base_link", "odom");
+		self.tf_broadcaster.sendTransform((self.x, self.y, 0.0), odom_quat, current_time, "base_link", "odom")
 
 		# next, we'll publish the odometry message over ROS
 		odom = Odometry()
@@ -112,7 +111,7 @@ class RoboExplorer:
 		odom.pose.pose.orientation.w = odom_quat[3]
 
 		# set the velocity
-		odom.child_frame_id = "base_link";
+		odom.child_frame_id = "base_link"
 		odom.twist.twist.linear.x = vx
 		odom.twist.twist.linear.y = vy
 		odom.twist.twist.angular.z = valpha
@@ -122,23 +121,25 @@ class RoboExplorer:
 		
 	def send_laser_scan(self, msg, current_time):
 		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "scan", "base_link");
+		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "scan", "base_link")
 
 		# actually ultra sonic range finder
+		num_points = 30
+		opening_angle = 30*pi/180 # each side
 		scan = LaserScan()
 		scan.header.stamp = current_time
 		scan.header.frame_id = "/scan"
-		scan.angle_min = -pi/4;
-		scan.angle_max = pi/4;
-		scan.angle_increment = pi/4;
-		scan.time_increment = 0.1;
-		scan.range_min = 0.0;
-		scan.range_max = 4.0;
-		for i in range(3):
+		scan.angle_min = -opening_angle
+		scan.angle_max = opening_angle
+		scan.angle_increment = (2*opening_angle)/num_points
+		scan.time_increment = 0.1/num_points
+		scan.range_min = 0.0
+		scan.range_max = 4.0
+		for i in range(num_points):
 			scan.ranges.append(msg.d1/100.0)
-		scan.intensities.append(0.5)
-		scan.intensities.append(1.0)
-		scan.intensities.append(0.5)
+		#scan.intensities.append(0.5)
+		#scan.intensities.append(1.0)
+		#scan.intensities.append(0.5)
 		self.pub_scan.publish(scan)
 
 	# test with rostopic pub -1 cmd_vel geometry_msgs/Twist '[0, 0, 0]' '[0, 0, 0]'
