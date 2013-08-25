@@ -15,7 +15,7 @@ class RoboExplorer:
 		rospy.init_node('robo_explorer')
 
 		self.wheel_dist = 0.188 # 18.8cm
-		self.wheel_size = 0.052*0.5 # 5.2cm; gear ration=0.5
+		self.wheel_size = 0.051*0.5 # 5.1cm; gear ration=0.5
 		self.speed = (0, 0)
 		self.x = 0
 		self.y = 0
