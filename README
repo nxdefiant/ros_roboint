@@ -1,7 +1,12 @@
 README libroboint/Robo Explorer ROS Connector
 ==========
 This is a ROS Stack to control the fischertechnik Robo Explorer with ROS using libroboint.
-It works with the Navigation Stack, the Laserscan is faked by the Sonar Sensor.
+Its is split in the Nodes:
+-libft_adapter: Accesses the Interface over libroboint.
+ Inputs are send via ft/get_inputs message.
+ Outputs are set with ft/set_output and ft/set_motor message.
+-robo_explorer.py: Provides the Robo Explorer functions:
+ Laserscan is faked by the Sonar Sensor.
 
 You need to use Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
 I used the Wheel Setup from Mobile Robots 2.
