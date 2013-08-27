@@ -23,7 +23,6 @@ class RoboExplorer:
 		self.last_in = None
 		self.tf_broadcaster = tf.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
-		self.input_count = 0
 		self.x_last = 0
 		self.y_last = 0
 		self.alpha_last = 0
@@ -39,13 +38,12 @@ class RoboExplorer:
 
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
-		self.input_count+=1
 
 		self.update_odometry(msg, current_time)
-		if self.input_count >= 10:
-			self.input_count = 0
+		if (current_time - self.last_time).to_nsec() > 100e6: # send every 100ms
 			self.send_odometry(msg, current_time)
 			self.send_laser_scan(msg, current_time)
+			self.last_time = current_time
 
 	def update_odometry(self, msg, current_time):
 		in_now = msg.input[1:3]
@@ -85,7 +83,6 @@ class RoboExplorer:
 		vx = (self.x - self.x_last) / dt
 		vy = (self.y - self.y_last) / dt
 		valpha = (self.alpha - self.alpha_last) / dt
-		self.last_time = current_time
 		self.x_last = self.x
 		self.y_last = self.y
 		self.alpha_last = self.alpha
@@ -124,7 +121,7 @@ class RoboExplorer:
 		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "scan", "base_link")
 
 		# actually ultra sonic range finder
-		num_points = 30
+		num_points = 60 # The base planner needs at least 30 points to work in the default config
 		opening_angle = 30*pi/180 # each side
 		scan = LaserScan()
 		scan.header.stamp = current_time
@@ -132,7 +129,7 @@ class RoboExplorer:
 		scan.angle_min = -opening_angle
 		scan.angle_max = opening_angle
 		scan.angle_increment = (2*opening_angle)/num_points
-		scan.time_increment = 0.1/num_points
+		scan.time_increment = 0.001/num_points
 		scan.range_min = 0.0
 		scan.range_max = 4.0
 		for i in range(num_points):
@@ -169,6 +166,8 @@ class RoboExplorer:
 		elif speed_l > 7: speed_l = 7
 		if speed_r < -7: speed_r = -7
 		elif speed_r > 7: speed_r = 7
+
+		#print "Speed wanted: %.2f %.2f, set: %d %d" % (trans, rot*180/pi, round(speed_l), round(speed_r))
 
 		outmsg = Motor()
 		outmsg.num = 1
