@@ -1,0 +1,40 @@
+README libroboint/Robo Explorer ROS Connector
+==========
+This is a ROS Stack to control the fischertechnik Robo Explorer with ROS using libroboint.
+It works with the Navigation Stack, the Laserscan is faked by the Sonar Sensor.
+
+You need to use Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
+I used the Wheel Setup from Mobile Robots 2.
+
+
+Requirements:
+<---------->
+ROS - http://www.ros.org tested under Groovy
+libroboint - http://defiant.homedns.org/~erik/ft/libft/
+
+
+Author:
+<---------->
+Erik Andresen - erik@vontaene.de
+
+Please contact me for bugs or any suggestions
+
+
+Compiling/Installing:
+<---------->
+This is a catkin package, see generall ROS Documentation.
+
+
+Commands:
+<---------->
+-When running a component (eg. rviz) remote:
+# export ROS_MASTER_URI=http://192.168.0.2:11311
+# export ROS_IP=$OWN_IP
+-Start Explorer:
+# roslaunch explorer_configuration.launch
+-Start Navigation Stack:
+# roslaunch move_base.launch
+-Start RViz:
+# rosrun rviz rviz
+-Manually setting of Translation/Rotation speed:
+# rostopic pub -1 cmd_vel geometry_msgs/Twist '[0.0, 0, 0]' '[0, 0, 0.0]'
