@@ -16,8 +16,6 @@ class RoboExplorer:
 	def __init__(self):
 		rospy.init_node('robo_explorer')
 
-		self.wheel_dist = 0.188 # 18.8cm
-		self.wheel_size = 0.051*0.5 # 5.1cm; gear ration=0.5
 		self.speed = (0, 0)
 		self.x = 0
 		self.y = 0
@@ -28,6 +26,10 @@ class RoboExplorer:
 		self.x_last = 0
 		self.y_last = 0
 		self.alpha_last = 0
+
+		self.enable_ultrasonic_laser = int(rospy.get_param('~ultrasonic_laser', "1"))
+		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.188"))
+		self.wheel_size = float(rospy.get_param('~wheel_size', "0.0255"))
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
 		self.pub_scan = rospy.Publisher("scan", LaserScan)
@@ -44,7 +46,8 @@ class RoboExplorer:
 		self.update_odometry(msg, current_time)
 		if (current_time - self.last_time).to_nsec() > 100e6: # send every 100ms
 			self.send_odometry(msg, current_time)
-			self.send_laser_scan(msg, current_time)
+			if self.enable_ultrasonic_laser:
+				self.send_laser_scan(msg, current_time)
 			self.last_time = current_time
 
 	def update_odometry(self, msg, current_time):
@@ -131,7 +134,7 @@ class RoboExplorer:
 		scan.angle_min = -opening_angle
 		scan.angle_max = opening_angle
 		scan.angle_increment = (2*opening_angle)/num_points
-		scan.time_increment = 0.001/num_points
+		scan.time_increment = 0.0
 		scan.range_min = 0.0
 		scan.range_max = 4.0
 		for i in range(num_points):

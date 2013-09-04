@@ -1,9 +1,13 @@
 <launch>
 	<node pkg="roboint" type="libft_adapter" name="libft_adapter" output="screen">
-		<param name="odom_param" value="param_value" />
 	</node>
 
 	<node pkg="roboint" type="robo_explorer.py" name="robo_explorer" output="screen">
-		<param name="sensor_param" value="param_value" />
+		<!-- fake laser scan with ultra sonic range finder -->
+		<param name="ultrasonic_laser" value="1" />
+		<!-- Distance between both wheels in meter (18.8cm) -->
+		<param name="wheel_dist" value="0.188" />
+		<!-- Size of wheel Diameter in meter (5.1cm) * gear ratio (0.5) = 2.55cm -->
+		<param name="wheel_size" value="0.0255" />
 	</node>
 </launch>
