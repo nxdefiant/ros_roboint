@@ -100,11 +100,18 @@ int main(int argc, char **argv)
 	while(ros::ok()) {
 		roboint::Inputs msg;
 
-		msg.input[0] = 0; // unused, Hardware starts at 1
-		for (int i=1; i<=8; i++) {
-			msg.input[i] = (transfer_area->E_Main & (1<<(i-1))) >> (i-1);
+		sem_wait(&hFt->lock);
+		for (int i=0; i<=7; i++) {
+			msg.input[i] = (transfer_area->E_Main & (1<<i)) >> i;
 		}
+		msg.ax = transfer_area->AX;
+		msg.ay = transfer_area->AY;
+		msg.a1 = transfer_area->A1;
+		msg.a2 = transfer_area->A2;
+		msg.av = transfer_area->AV;
 		msg.d1 = transfer_area->D1;
+		msg.d2 = transfer_area->D2;
+		sem_post(&hFt->lock);
 
 		/**
 		 * The publish() function is how you send messages. The parameter

@@ -2,6 +2,8 @@
 import roslib; roslib.load_manifest('roboint')
 import rospy
 import tf
+import tf.broadcaster
+import tf.transformations
 from math import sin, cos, pi
 from geometry_msgs.msg import Twist, TransformStamped, Point32
 from sensor_msgs.msg import LaserScan
@@ -21,7 +23,7 @@ class RoboExplorer:
 		self.y = 0
 		self.alpha = 0
 		self.last_in = None
-		self.tf_broadcaster = tf.TransformBroadcaster()
+		self.tf_broadcaster = tf.broadcaster.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
 		self.x_last = 0
 		self.y_last = 0
@@ -46,7 +48,7 @@ class RoboExplorer:
 			self.last_time = current_time
 
 	def update_odometry(self, msg, current_time):
-		in_now = msg.input[1:3]
+		in_now = msg.input[:2]
 		if self.last_in is not None:
 			in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
 			# fix in_diff from actual motor direction
