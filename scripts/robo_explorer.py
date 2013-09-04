@@ -32,7 +32,8 @@ class RoboExplorer:
 		self.wheel_size = float(rospy.get_param('~wheel_size', "0.0255"))
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
-		self.pub_scan = rospy.Publisher("scan", LaserScan)
+		if self.enable_ultrasonic_laser:
+			self.pub_scan = rospy.Publisher("scan", LaserScan)
 		self.pub_odom = rospy.Publisher("odom", Odometry)
 		
 		rospy.Subscriber("cmd_vel", Twist, self.cmdVelReceived)
