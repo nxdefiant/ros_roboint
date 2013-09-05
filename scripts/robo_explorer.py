@@ -61,7 +61,6 @@ class RoboExplorer:
 		in_now = msg.input[:2]
 		if self.last_in is not None:
 			in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
-			print "update", in_diff, msg.output
 			# fix in_diff from actual motor direction
 			if msg.output[1] > 0: # left reverse
 				in_diff[0] = -in_diff[0]
@@ -180,7 +179,7 @@ class RoboExplorer:
 		if speed_r < -7: speed_r = -7
 		elif speed_r > 7: speed_r = 7
 
-		print "Speed wanted: %.2f m/s %.2f rad/s, set: %d %d" % (trans, rot, round(speed_l), round(speed_r))
+		#print "Speed wanted: %.2f m/s %.2f rad/s, set: %d %d" % (trans, rot, round(speed_l), round(speed_r))
 
 		outmsg = Motor()
 		outmsg.num = 0
