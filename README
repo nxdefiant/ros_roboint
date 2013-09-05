@@ -8,7 +8,7 @@ Its is split in the Nodes:
 -robo_explorer.py: Provides the Robo Explorer functions:
  Laserscan is faked by the Sonar Sensor.
 
-You need to use Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
+You need to use the Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
 I used the Wheel Setup from Mobile Robots 2.
 
 
@@ -42,4 +42,7 @@ Commands:
 -Start RViz:
 # rosrun rviz rviz
 -Manually setting of Translation/Rotation speed:
-# rostopic pub -1 cmd_vel geometry_msgs/Twist '[0.0, 0, 0]' '[0, 0, 0.0]'
+ Forward:
+# rostopic pub -1 cmd_vel geometry_msgs/Twist '[0.1, 0, 0]' '[0, 0, 0.0]'
+ Turn:
+# rostopic pub -1 cmd_vel geometry_msgs/Twist '[0.1, 0, 0]' '[0, 0, 0.4]'

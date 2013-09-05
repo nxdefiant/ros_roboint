@@ -27,9 +27,16 @@ class RoboExplorer:
 		self.y_last = 0
 		self.alpha_last = 0
 
-		self.enable_ultrasonic_laser = int(rospy.get_param('~ultrasonic_laser', "1"))
+		# fake laser scan with ultra sonic range finder
+		self.enable_ultrasonic_laser = bool(rospy.get_param('~ultrasonic_laser', "True"))
+		# Distance between both wheels in meter (18.8cm)
 		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.188"))
+		# Size of wheel Diameter in meter (5.1cm) * gear ratio (0.5) = 2.55cm 
 		self.wheel_size = float(rospy.get_param('~wheel_size', "0.0255"))
+		# Speed to PWM equation gradiant (The m in pwm = speed*m+b)
+		self.speed_gradiant = float(rospy.get_param('~speed_gradiant', "64.3"))
+		# Speed to PWM equation constant (The b in pwm = speed*m+b)
+		self.speed_constant = float(rospy.get_param('~speed_constant', "-1.7"))
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
 		if self.enable_ultrasonic_laser:
@@ -156,14 +163,14 @@ class RoboExplorer:
 		# handle translation
 		speed_l = 0
 		wish_speed_left = trans - speed_offset
-		if abs(wish_speed_left) > 1.7/64.3:
-			speed_l = 64.3*abs(wish_speed_left) - 1.7
+		if abs(wish_speed_left) > 0:
+			speed_l = self.speed_gradiant*abs(wish_speed_left) + self.speed_constant
 			if wish_speed_left < 0:
 				speed_l*=-1
 		speed_r = 0
 		wish_speed_right = trans + speed_offset
-		if abs(wish_speed_right) > 1.7/64.3:
-			speed_r = 64.3*abs(wish_speed_right) - 1.7
+		if abs(wish_speed_right) > 0:
+			speed_r = self.speed_gradiant*abs(wish_speed_right) + self.speed_constant
 			if wish_speed_right < 0:
 				speed_r*=-1
 
@@ -173,7 +180,7 @@ class RoboExplorer:
 		if speed_r < -7: speed_r = -7
 		elif speed_r > 7: speed_r = 7
 
-		#print "Speed wanted: %.2f %.2f, set: %d %d" % (trans, rot*180/pi, round(speed_l), round(speed_r))
+		#print "Speed wanted: %.2f m/s %.2f rad/s, set: %d %d" % (trans, rot, round(speed_l), round(speed_r))
 
 		outmsg = Motor()
 		outmsg.num = 1
