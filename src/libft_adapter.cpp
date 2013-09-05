@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 #include "roboint.h"
 #include "ros/ros.h"
 #include "roboint/Output.h"
@@ -6,30 +7,28 @@
 #include "roboint/Inputs.h"
 
 
-FT_TRANSFER_AREA *transfer_area = NULL;
-
+static FT_TRANSFER_AREA *transfer_area = NULL;
+static char pwm[8] = {0};
+static char pwm_next[8] = {0};
+static pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void cb_set_output(const ::roboint::OutputConstPtr& msg) {
-	if (msg->speed == 0) {
-		transfer_area->M_Main &= ~(1<<(msg->num-1));
-	} else {
-		transfer_area->M_Main |= (1<<(msg->num-1));
-	}
-	transfer_area->MPWM_Main[msg->num-1] = msg->speed;
+	pthread_mutex_lock(&pwm_mutex);
+	pwm_next[msg->num] = msg->speed;
+	pthread_mutex_unlock(&pwm_mutex);
 }
 
 
 void cb_set_motor(const ::roboint::MotorConstPtr& msg) {
-	unsigned char iDirection = 0;
-	int speed = abs(msg->speed);
-
-	if (msg->speed > 0) iDirection = 0x1;
-	else if (msg->speed < 0) iDirection = 0x2;
-
-	transfer_area->M_Main &= ~(3<<(msg->num-1)*2);
-	transfer_area->M_Main |= iDirection<<(msg->num-1)*2;
-	transfer_area->MPWM_Main[(msg->num-1)*2] = speed;
-	transfer_area->MPWM_Main[(msg->num-1)*2 + 1] = speed;
+	pthread_mutex_lock(&pwm_mutex);
+	if (msg->speed > 0) {
+		pwm_next[msg->num*2] = msg->speed;
+		pwm_next[msg->num*2+1] = 0;
+	} else {
+		pwm_next[msg->num*2] = 0;
+		pwm_next[msg->num*2+1] = msg->speed;
+	}
+	pthread_mutex_unlock(&pwm_mutex);
 }
 
 
@@ -100,9 +99,21 @@ int main(int argc, char **argv)
 	while(ros::ok()) {
 		roboint::Inputs msg;
 
+		pthread_mutex_lock(&pwm_mutex);
 		sem_wait(&hFt->lock);
 		for (int i=0; i<=7; i++) {
 			msg.input[i] = (transfer_area->E_Main & (1<<i)) >> i;
+		}
+		for (int i=0; i<=7; i++) {
+			msg.output[i] = abs(pwm[i]);
+			pwm[i] = pwm_next[i];
+
+			if (pwm[i] == 0) {
+				transfer_area->M_Main &= ~(1<<(i));
+			} else {
+				transfer_area->M_Main |= (1<<(i));
+			}
+			transfer_area->MPWM_Main[i] = abs(pwm[i]);
 		}
 		msg.ax = transfer_area->AX;
 		msg.ay = transfer_area->AY;
@@ -112,6 +123,7 @@ int main(int argc, char **argv)
 		msg.d1 = transfer_area->D1;
 		msg.d2 = transfer_area->D2;
 		sem_post(&hFt->lock);
+		pthread_mutex_unlock(&pwm_mutex);
 
 		/**
 		 * The publish() function is how you send messages. The parameter

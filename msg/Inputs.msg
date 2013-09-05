@@ -1,4 +1,5 @@
 bool[8] input
+int8[8] output
 int16 ax
 int16 ay
 int16 a1
