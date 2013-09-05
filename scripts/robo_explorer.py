@@ -29,10 +29,10 @@ class RoboExplorer:
 
 		# fake laser scan with ultra sonic range finder
 		self.enable_ultrasonic_laser = bool(rospy.get_param('~ultrasonic_laser', "True"))
-		# Distance between both wheels in meter (18.8cm)
-		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.188"))
-		# Size of wheel Diameter in meter (5.1cm) * gear ratio (0.5) = 2.55cm 
-		self.wheel_size = float(rospy.get_param('~wheel_size', "0.0255"))
+		# Distance between both wheels in meter (18.55cm)
+		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.1855"))
+		# Size of wheel Diameter in meter (5.15cm) * gear ratio (0.5) = 2.575cm 
+		self.wheel_size = float(rospy.get_param('~wheel_size', "0.02575"))
 		# Speed to PWM equation gradiant (The m in pwm = speed*m+b)
 		self.speed_gradiant = float(rospy.get_param('~speed_gradiant', "64.3"))
 		# Speed to PWM equation constant (The b in pwm = speed*m+b)
