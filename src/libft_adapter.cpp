@@ -14,7 +14,7 @@ static pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void cb_set_output(const ::roboint::OutputConstPtr& msg) {
 	pthread_mutex_lock(&pwm_mutex);
-	pwm_next[msg->num] = msg->speed;
+	pwm_next[msg->num] = abs(msg->speed);
 	pthread_mutex_unlock(&pwm_mutex);
 }
 
@@ -22,11 +22,11 @@ void cb_set_output(const ::roboint::OutputConstPtr& msg) {
 void cb_set_motor(const ::roboint::MotorConstPtr& msg) {
 	pthread_mutex_lock(&pwm_mutex);
 	if (msg->speed > 0) {
-		pwm_next[msg->num*2] = msg->speed;
+		pwm_next[msg->num*2] = abs(msg->speed);
 		pwm_next[msg->num*2+1] = 0;
 	} else {
 		pwm_next[msg->num*2] = 0;
-		pwm_next[msg->num*2+1] = msg->speed;
+		pwm_next[msg->num*2+1] = abs(msg->speed);
 	}
 	pthread_mutex_unlock(&pwm_mutex);
 }
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
 			msg.input[i] = (transfer_area->E_Main & (1<<i)) >> i;
 		}
 		for (int i=0; i<=7; i++) {
-			msg.output[i] = abs(pwm[i]);
+			msg.output[i] = pwm[i];
 			pwm[i] = pwm_next[i];
 
 			if (pwm[i] == 0) {
@@ -113,7 +113,7 @@ int main(int argc, char **argv)
 			} else {
 				transfer_area->M_Main |= (1<<(i));
 			}
-			transfer_area->MPWM_Main[i] = abs(pwm[i]);
+			transfer_area->MPWM_Main[i] = pwm[i];
 		}
 		msg.ax = transfer_area->AX;
 		msg.ay = transfer_area->AY;
