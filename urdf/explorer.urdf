@@ -6,8 +6,8 @@
 				<box size="0.14 0.155 0.085"/>
 			</geometry>
 			<origin xyz="0.06 0 0.0525" rpy="0 0 0"/>
-			<material name="white">
-				<color rgba="1 1 1 1"/>
+			<material name="white_transparent">
+				<color rgba="1 1 1 0.8"/>
 			</material>
 		</visual>
 	</link>
