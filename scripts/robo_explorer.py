@@ -4,7 +4,7 @@ import rospy
 import tf
 import tf.broadcaster
 import tf.transformations
-from math import sin, cos, pi
+from math import *
 from geometry_msgs.msg import Twist, TransformStamped, Point32
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
@@ -92,8 +92,8 @@ class RoboExplorer:
 	def send_odometry(self, msg, current_time):
 		# speeds
 		dt = (current_time - self.last_time).to_sec()
-		vx = (self.x - self.x_last) / dt
-		vy = (self.y - self.y_last) / dt
+		vx = sqrt((self.x - self.x_last)**2 + (self.y - self.y_last)**2) / dt
+		vy = 0.0
 		valpha = (self.alpha - self.alpha_last) / dt
 		self.x_last = self.x
 		self.y_last = self.y
