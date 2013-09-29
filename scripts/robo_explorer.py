@@ -2,8 +2,6 @@
 import roslib; roslib.load_manifest('roboint')
 import rospy
 import tf
-import tf.broadcaster
-import tf.transformations
 from math import *
 from geometry_msgs.msg import Twist, TransformStamped, Point32
 from sensor_msgs.msg import LaserScan
@@ -93,7 +91,9 @@ class RoboExplorer:
 		# speeds
 		dt = (current_time - self.last_time).to_sec()
 		vx = sqrt((self.x - self.x_last)**2 + (self.y - self.y_last)**2) / dt
-		vy = 0.0
+		if (msg.output[0]-msg.output[1] + msg.output[2]-msg.output[3]) < 0:
+			# moving backward
+			vx*=-1
 		valpha = (self.alpha - self.alpha_last) / dt
 		self.x_last = self.x
 		self.y_last = self.y
@@ -122,7 +122,7 @@ class RoboExplorer:
 		# set the velocity
 		odom.child_frame_id = "base_link"
 		odom.twist.twist.linear.x = vx
-		odom.twist.twist.linear.y = vy
+		odom.twist.twist.linear.y = 0.0
 		odom.twist.twist.angular.z = valpha
 
 		# publish the message
