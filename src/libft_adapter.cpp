@@ -100,6 +100,7 @@ int main(int argc, char **argv)
 		roboint::Inputs msg;
 
 		pthread_mutex_lock(&pwm_mutex);
+		msg.header.stamp = ros::Time::now();
 		sem_wait(&hFt->lock);
 		for (int i=0; i<=7; i++) {
 			msg.input[i] = (transfer_area->E_Main & (1<<i)) >> i;
