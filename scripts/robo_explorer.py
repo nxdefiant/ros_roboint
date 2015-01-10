@@ -3,7 +3,7 @@ import roslib; roslib.load_manifest('roboint')
 import rospy
 import tf
 from math import *
-from geometry_msgs.msg import Twist, TransformStamped, Point32
+from geometry_msgs.msg import Twist, TransformStamped, Point32, PoseWithCovarianceStamped
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from roboint.msg import Motor
@@ -35,15 +35,23 @@ class RoboExplorer:
 		# Speed to PWM equation constant (The b in pwm = speed*m+b)
 		self.speed_constant = float(rospy.get_param('~speed_constant', "-1.7"))
 
-		self.pub_motor = rospy.Publisher("ft/set_motor", Motor)
+		self.pub_motor = rospy.Publisher("ft/set_motor", Motor, queue_size=16)
 		if self.enable_ultrasonic_laser:
-			self.pub_scan = rospy.Publisher("scan", LaserScan)
-		self.pub_odom = rospy.Publisher("odom", Odometry)
+			self.pub_scan = rospy.Publisher("scan", LaserScan, queue_size=16)
+		self.pub_odom = rospy.Publisher("odom", Odometry, queue_size=16)
 		
 		rospy.Subscriber("cmd_vel", Twist, self.cmdVelReceived)
 		rospy.Subscriber("ft/get_inputs", Inputs, self.inputsReceived)
+		rospy.Subscriber("initialpose", PoseWithCovarianceStamped, self.posReceived)
 
 		rospy.spin()
+	
+	def posReceived(self, msg):
+		self.x = msg.pose.pose.position.x
+		self.y = msg.pose.pose.position.y
+		orientation = msg.pose.pose.orientation
+		angles = tf.transformations.euler_from_quaternion([orientation.x, orientation.y, orientation.z, orientation.w])
+		self.alpha = angles[2]
 
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
@@ -69,10 +77,10 @@ class RoboExplorer:
 			elif msg.output[2] == 0 and msg.output[3] == 0: # right stop
 				in_diff[1] = 0
 
-			dist_dir = (in_diff[1] - in_diff[0])*self.wheel_size*pi/8 # steps_changed in different direction => m
+			dist_dir = (in_diff[1] - in_diff[0]) * self.wheel_size*pi/8 # steps_changed in different direction => m
 			delta_alpha = dist_dir/self.wheel_dist
 
-			dist = (in_diff[0] + in_diff[1])/2.0*self.wheel_size*pi/8 # steps_changed same direction => m
+			dist = (in_diff[0] + in_diff[1])/2.0 * self.wheel_size*pi/8 # steps_changed same direction => m
 
 			delta_x = cos(self.alpha + delta_alpha/2)*dist
 			delta_y = sin(self.alpha + delta_alpha/2)*dist
@@ -129,15 +137,12 @@ class RoboExplorer:
 		self.pub_odom.publish(odom)
 		
 	def send_laser_scan(self, msg, current_time):
-		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((0.06, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0), current_time, "scan", "base_link")
-
 		# actually ultra sonic range finder
 		num_points = 60 # The base planner needs at least 30 points to work in the default config
 		opening_angle = 30*pi/180 # each side
 		scan = LaserScan()
 		scan.header.stamp = current_time
-		scan.header.frame_id = "/scan"
+		scan.header.frame_id = "forward_sensor"
 		scan.angle_min = -opening_angle
 		scan.angle_max = opening_angle
 		scan.angle_increment = (2*opening_angle)/num_points

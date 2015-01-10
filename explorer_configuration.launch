@@ -15,4 +15,9 @@
 	</node>
 
 	<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+
+	<arg name="map_file" default="$(find roboint)/config/map.png" />
+	<include file="$(find roboint)/launch/move_base.launch">
+		<arg name="map_file" value="$(arg map_file)" />
+	</include>
 </launch>
