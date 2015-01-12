@@ -10,6 +10,7 @@ Its is split in the Nodes:
 
 You need to use the Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
 I used the Wheel Setup from Mobile Robots 2.
+The world frame is "odom" since this setup is running without SLAM and amcl.
 
 
 Requirements:
