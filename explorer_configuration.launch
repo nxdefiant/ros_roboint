@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-	<param name="robot_description" textfile="urdf/explorer.urdf" />
+	<param name="robot_description" textfile="$(find roboint)/urdf/explorer.urdf" />
 
 	<node pkg="roboint" type="libft_adapter" name="libft_adapter" output="screen">
 	</node>
