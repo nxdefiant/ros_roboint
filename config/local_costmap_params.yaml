@@ -8,3 +8,6 @@ local_costmap:
   width: 4.0
   height: 4.0
   resolution: 0.01
+  plugins:
+  - {name: sonar,   type: "range_sensor_layer::RangeSensorLayer"}
+  - {name: inflation_layer, type: 'costmap_2d::InflationLayer'}

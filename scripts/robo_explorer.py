@@ -4,7 +4,7 @@ import rospy
 import tf
 from math import *
 from geometry_msgs.msg import Twist, TransformStamped, Point32, PoseWithCovarianceStamped
-from sensor_msgs.msg import LaserScan
+from sensor_msgs.msg import Range
 from nav_msgs.msg import Odometry
 from roboint.msg import Motor
 from roboint.msg import Inputs
@@ -24,8 +24,6 @@ class RoboExplorer:
 		self.y_last = 0
 		self.alpha_last = 0
 
-		# fake laser scan with ultra sonic range finder
-		self.enable_ultrasonic_laser = bool(rospy.get_param('~ultrasonic_laser', "True"))
 		# Distance between both wheels in meter (18.55cm)
 		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.1855"))
 		# Size of wheel Diameter in meter (5.15cm) * gear ratio (0.5) = 2.575cm 
@@ -36,8 +34,7 @@ class RoboExplorer:
 		self.speed_constant = float(rospy.get_param('~speed_constant', "-1.7"))
 
 		self.pub_motor = rospy.Publisher("ft/set_motor", Motor, queue_size=16)
-		if self.enable_ultrasonic_laser:
-			self.pub_scan = rospy.Publisher("scan", LaserScan, queue_size=16)
+		self.pub_sonar = rospy.Publisher("sonar", Range, queue_size=16)
 		self.pub_odom = rospy.Publisher("odom", Odometry, queue_size=16)
 		
 		rospy.Subscriber("cmd_vel", Twist, self.cmdVelReceived)
@@ -59,8 +56,7 @@ class RoboExplorer:
 		self.update_odometry(msg, current_time)
 		if (current_time - self.last_time).to_nsec() > 100e6: # send every 100ms
 			self.send_odometry(msg, current_time)
-			if self.enable_ultrasonic_laser:
-				self.send_laser_scan(msg, current_time)
+			self.send_range(msg, current_time)
 			self.last_time = current_time
 
 	def update_odometry(self, msg, current_time):
@@ -136,25 +132,17 @@ class RoboExplorer:
 		# publish the message
 		self.pub_odom.publish(odom)
 		
-	def send_laser_scan(self, msg, current_time):
-		# actually ultra sonic range finder
-		num_points = 60 # The base planner needs at least 30 points to work in the default config
-		opening_angle = 30*pi/180 # each side
-		scan = LaserScan()
+	def send_range(self, msg, current_time):
+		# ultra sonic range finder
+		scan = Range()
 		scan.header.stamp = current_time
 		scan.header.frame_id = "forward_sensor"
-		scan.angle_min = -opening_angle
-		scan.angle_max = opening_angle
-		scan.angle_increment = (2*opening_angle)/num_points
-		scan.time_increment = 0.0
-		scan.range_min = 0.0
-		scan.range_max = 4.0
-		for i in range(num_points):
-			scan.ranges.append(msg.d1/100.0)
-		#scan.intensities.append(0.5)
-		#scan.intensities.append(1.0)
-		#scan.intensities.append(0.5)
-		self.pub_scan.publish(scan)
+		scan.radiation_type = 0
+		scan.field_of_view = 60*pi/180
+		scan.min_range = 0.0
+		scan.max_range = 4.0
+		scan.range = msg.d1/100.0
+		self.pub_sonar.publish(scan)
 
 	# test with rostopic pub -1 cmd_vel geometry_msgs/Twist '[0, 0, 0]' '[0, 0, 0]'
 	def cmdVelReceived(self, msg):

@@ -1,11 +1,5 @@
 <?xml version="1.0"?>
 <launch>
-	<!-- Run the map server -->
-	<arg name="map_file" default="$(find roboint)/config/map.png" />
-	<node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file) 0.01" >
-		<param name="frame_id" value="odom" />
-	</node>
-
 	<node pkg="move_base" type="move_base" respawn="false" name="move_base" output="screen">
 		<param name="controller_frequency" value="4.0" />
 		<rosparam file="$(find roboint)/config/costmap_common_params.yaml" command="load" ns="global_costmap" />
