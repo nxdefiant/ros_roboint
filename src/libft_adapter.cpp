@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	 * than we can send them, the number here specifies how many messages to
 	 * buffer up before throwing some away.
 	 */
-	ros::Publisher chatter_pub = n.advertise<roboint::Inputs>("ft/get_inputs", 10);
+	ros::Publisher pub_inputs = n.advertise<roboint::Inputs>("ft/get_inputs", 10);
 	ros::Rate loop_rate(100);
 
 	while(ros::ok()) {
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 		 * given as a template parameter to the advertise<>() call, as was done
 		 * in the constructor above.
 		 */
-		chatter_pub.publish(msg);
+		pub_inputs.publish(msg);
 
 		/**
 		 * ros::spin() will enter a loop, pumping callbacks.  With this version, all
