@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 import roslib; roslib.load_manifest('roboint')
 import rospy
-import tf
 from math import *
-from geometry_msgs.msg import Twist, TransformStamped, Point32, PoseWithCovarianceStamped
 from sensor_msgs.msg import Range
-from nav_msgs.msg import Odometry
-from roboint.msg import Motor
 from roboint.msg import Inputs
 
 
@@ -14,124 +10,21 @@ class RoboExplorer:
 	def __init__(self):
 		rospy.init_node('robo_explorer')
 
-		self.x = 0
-		self.y = 0
-		self.alpha = 0
-		self.last_in = None
-		self.tf_broadcaster = tf.broadcaster.TransformBroadcaster()
 		self.last_time = rospy.Time.now()
-		self.x_last = 0
-		self.y_last = 0
-		self.alpha_last = 0
-
-		# Distance between both wheels in meter (18.55cm)
-		self.wheel_dist = float(rospy.get_param('~wheel_dist', "0.1855"))
-		# Size of wheel Diameter in meter (5.15cm) * gear ratio (0.5) = 2.575cm 
-		self.wheel_size = float(rospy.get_param('~wheel_size', "0.02575"))
-		# Speed to PWM equation gradiant (The m in pwm = speed*m+b)
-		self.speed_gradiant = float(rospy.get_param('~speed_gradiant', "64.3"))
-		# Speed to PWM equation constant (The b in pwm = speed*m+b)
-		self.speed_constant = float(rospy.get_param('~speed_constant', "-1.7"))
-
-		self.pub_motor = rospy.Publisher("ft/set_motor", Motor, queue_size=16)
 		self.pub_sonar = rospy.Publisher("sonar", Range, queue_size=16)
-		self.pub_odom = rospy.Publisher("odom", Odometry, queue_size=16)
-		
-		rospy.Subscriber("cmd_vel", Twist, self.cmdVelReceived)
 		rospy.Subscriber("ft/get_inputs", Inputs, self.inputsReceived)
-		rospy.Subscriber("initialpose", PoseWithCovarianceStamped, self.posReceived)
 
 		rospy.spin()
 	
-	def posReceived(self, msg):
-		self.x = msg.pose.pose.position.x
-		self.y = msg.pose.pose.position.y
-		orientation = msg.pose.pose.orientation
-		angles = tf.transformations.euler_from_quaternion([orientation.x, orientation.y, orientation.z, orientation.w])
-		self.alpha = angles[2]
-
 	def inputsReceived(self, msg):
 		current_time = rospy.Time.now()
 
-		self.update_odometry(msg, current_time)
+		#self.update_odometry(msg, current_time)
 		if (current_time - self.last_time).to_nsec() > 100e6: # send every 100ms
-			self.send_odometry(msg, current_time)
+			#self.send_odometry(msg, current_time)
 			self.send_range(msg, current_time)
 			self.last_time = current_time
 
-	def update_odometry(self, msg, current_time):
-		in_now = msg.input[:2]
-		if self.last_in is not None:
-			in_diff = [abs(a - b) for a, b in zip(in_now, self.last_in)] # get changed inputs
-			# fix in_diff from actual motor direction
-			if msg.output[1] > 0: # left reverse
-				in_diff[0] = -in_diff[0]
-			elif msg.output[0] == 0 and msg.output[1] == 0: # left stop
-				in_diff[0] = 0
-			if msg.output[3] > 0: # right reverse
-				in_diff[1] = -in_diff[1]
-			elif msg.output[2] == 0 and msg.output[3] == 0: # right stop
-				in_diff[1] = 0
-
-			dist_dir = (in_diff[1] - in_diff[0]) * self.wheel_size*pi/8 # steps_changed in different direction => m
-			delta_alpha = dist_dir/self.wheel_dist
-
-			dist = (in_diff[0] + in_diff[1])/2.0 * self.wheel_size*pi/8 # steps_changed same direction => m
-
-			delta_x = cos(self.alpha + delta_alpha/2)*dist
-			delta_y = sin(self.alpha + delta_alpha/2)*dist
-
-			self.alpha += delta_alpha
-			if self.alpha > 2*pi:
-				self.alpha -= 2*pi
-			elif self.alpha < -2*pi:
-				self.alpha += 2*pi
-			self.x += delta_x
-			self.y += delta_y
-
-		self.last_in = in_now
-
-	def send_odometry(self, msg, current_time):
-		# speeds
-		dt = (current_time - self.last_time).to_sec()
-		vx = sqrt((self.x - self.x_last)**2 + (self.y - self.y_last)**2) / dt
-		if (msg.output[0]-msg.output[1] + msg.output[2]-msg.output[3]) < 0:
-			# moving backward
-			vx*=-1
-		valpha = (self.alpha - self.alpha_last) / dt
-		self.x_last = self.x
-		self.y_last = self.y
-		self.alpha_last = self.alpha
-
-		# since all odometry is 6DOF we'll need a quaternion created from yaw
-		odom_quat = tf.transformations.quaternion_from_euler(0, 0, self.alpha)
-
-		# first, we'll publish the transform over tf
-		self.tf_broadcaster.sendTransform((self.x, self.y, 0.0), odom_quat, current_time, "base_link", "odom")
-
-		# next, we'll publish the odometry message over ROS
-		odom = Odometry()
-		odom.header.stamp = current_time
-		odom.header.frame_id = "/odom"
-
-		# set the position
-		odom.pose.pose.position.x = self.x
-		odom.pose.pose.position.y = self.y
-		odom.pose.pose.position.z = 0.0
-		odom.pose.pose.orientation.x = odom_quat[0]
-		odom.pose.pose.orientation.y = odom_quat[1]
-		odom.pose.pose.orientation.z = odom_quat[2]
-		odom.pose.pose.orientation.w = odom_quat[3]
-
-		# set the velocity
-		odom.child_frame_id = "base_link"
-		odom.twist.twist.linear.x = vx
-		odom.twist.twist.linear.y = 0.0
-		odom.twist.twist.angular.z = valpha
-
-		# publish the message
-		self.pub_odom.publish(odom)
-		
 	def send_range(self, msg, current_time):
 		# ultra sonic range finder
 		scan = Range()
@@ -143,46 +36,6 @@ class RoboExplorer:
 		scan.max_range = 4.0
 		scan.range = msg.d1/100.0
 		self.pub_sonar.publish(scan)
-
-	# test with rostopic pub -1 cmd_vel geometry_msgs/Twist '[0, 0, 0]' '[0, 0, 0]'
-	def cmdVelReceived(self, msg):
-		trans = msg.linear.x
-		rot = msg.angular.z # rad/s
-
-		# handle rotation as offset to speeds
-		speed_offset = (rot * self.wheel_dist)/2.0 # m/s
-
-		# handle translation
-		speed_l = 0
-		wish_speed_left = trans - speed_offset
-		if abs(wish_speed_left) > 0:
-			speed_l = self.speed_gradiant*abs(wish_speed_left) + self.speed_constant
-			if wish_speed_left < 0:
-				speed_l*=-1
-		speed_r = 0
-		wish_speed_right = trans + speed_offset
-		if abs(wish_speed_right) > 0:
-			speed_r = self.speed_gradiant*abs(wish_speed_right) + self.speed_constant
-			if wish_speed_right < 0:
-				speed_r*=-1
-
-		# check limits
-		if speed_l < -7: speed_l = -7
-		elif speed_l > 7: speed_l = 7
-		if speed_r < -7: speed_r = -7
-		elif speed_r > 7: speed_r = 7
-
-		#print "Speed wanted: %.2f m/s %.2f rad/s, set: %d %d" % (trans, rot, round(speed_l), round(speed_r))
-
-		outmsg = Motor()
-		outmsg.num = 0
-		outmsg.speed = round(speed_l)
-		self.pub_motor.publish(outmsg)
-		
-		outmsg = Motor()
-		outmsg.num = 1
-		outmsg.speed = round(speed_r)
-		self.pub_motor.publish(outmsg)
 
 if __name__ == '__main__':
 	RoboExplorer()

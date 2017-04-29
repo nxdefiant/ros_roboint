@@ -4,7 +4,7 @@ project(roboint)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation urdf)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation urdf controller_manager)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -74,6 +74,7 @@ include_directories(include
 ## Declare a cpp executable
 # add_executable(roboint_node src/roboint_node.cpp)
 add_executable(libft_adapter src/libft_adapter.cpp)
+add_executable(robo_explorer_hardware src/robo_explorer_hardware.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -84,6 +85,7 @@ add_dependencies(libft_adapter roboint_gencpp)
 #   ${catkin_LIBRARIES}
 # )
 target_link_libraries(libft_adapter ${catkin_LIBRARIES} roboint)
+target_link_libraries(robo_explorer_hardware ${catkin_LIBRARIES})
 
 #############
 ## Install ##

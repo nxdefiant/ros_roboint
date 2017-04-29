@@ -8,8 +8,8 @@
 
 
 static FT_TRANSFER_AREA *transfer_area = NULL;
-static char pwm[8] = {0};
-static char pwm_next[8] = {0};
+static int8_t pwm[8] = {0};
+static int8_t pwm_next[8] = {0};
 static pthread_mutex_t pwm_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void cb_set_output(const ::roboint::OutputConstPtr& msg) {
