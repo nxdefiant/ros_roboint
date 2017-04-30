@@ -31,8 +31,8 @@ class RoboExplorer:
 		scan.header.stamp = current_time
 		scan.header.frame_id = "forward_sensor"
 		scan.radiation_type = 0
-		scan.field_of_view = 60*pi/180
-		scan.min_range = 0.0
+		scan.field_of_view = 30*pi/180
+		scan.min_range = 0.04
 		scan.max_range = 4.0
 		scan.range = msg.d1/100.0
 		self.pub_sonar.publish(scan)
