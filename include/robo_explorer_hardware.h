@@ -4,6 +4,9 @@
 #include "roboint/Inputs.h"
 #include "roboint/Motor.h"
 
+// When to increase/decrease speed based on current wheel speed difference
+#define SPEED_CONTROL_THRESH 0.5
+
 class RoboExplorer : public hardware_interface::RobotHW
 {
 	public:
@@ -31,8 +34,9 @@ class RoboExplorer : public hardware_interface::RobotHW
 		void read(ros::Duration period) {
 			static double pos_last[2];
 
-			pos[0] = pos_encoder[0] * M_PI/8;
-			pos[1] = pos_encoder[1] * M_PI/8;
+			// gear ration 1:2, 8 ticks/revolution, 2*8=16
+			pos[0] = pos_encoder[0] * 2*M_PI/16;
+			pos[1] = pos_encoder[1] * 2*M_PI/16;
 			vel[0] = (pos[0] - pos_last[0])/period.toSec();
 			vel[1] = (pos[1] - pos_last[1])/period.toSec();
 			
@@ -41,19 +45,26 @@ class RoboExplorer : public hardware_interface::RobotHW
 
 		// Writes current velocity command to hardware
 		void write() {
-			double speed_l = 0;
-			double speed_r = 0;
+			static double speed_l = 0;
+			static double speed_r = 0;
 			double wish_speed_left = cmd[0];
 			double wish_speed_right = cmd[1];
 			roboint::Motor msg;
 
-			if (fabs(wish_speed_left) > 0) {
-				speed_l = 64.3*fabs(wish_speed_left) -1.7;
-				if (wish_speed_left < 0) speed_l*=-1;
+			if (wish_speed_left == 0) {
+				speed_l = 0;
+			} else if (vel[0] - wish_speed_left < -SPEED_CONTROL_THRESH) {
+				speed_l++;
+			} else if (vel[0] - wish_speed_left > SPEED_CONTROL_THRESH) {
+				speed_l--;
 			}
-			if (fabs(wish_speed_right) > 0) {
-				speed_r = 64.3*fabs(wish_speed_right) -1.7;
-				if (wish_speed_right < 0) speed_r*=-1;
+
+			if (wish_speed_right == 0) {
+				speed_r = 0;
+			} else if (vel[1] - wish_speed_right < -SPEED_CONTROL_THRESH) {
+				speed_r++;
+			} else if (vel[1] - wish_speed_right > SPEED_CONTROL_THRESH) {
+				speed_r--;
 			}
 
 			// check limits

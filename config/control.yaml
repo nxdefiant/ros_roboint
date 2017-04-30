@@ -9,3 +9,4 @@ diff_drive_controller:
   pose_covariance_diagonal:  [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.03]
   twist_covariance_diagonal: [0.001, 0.001, 1000000.0, 1000000.0, 1000000.0, 0.03]
   publish_rate: 10
+  cmd_vel_timeout: 1.0
