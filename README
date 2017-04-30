@@ -1,28 +1,30 @@
 README libroboint/Robo Explorer ROS Connector
 ==========
-This is a ROS Stack to control the fischertechnik Robo Explorer with ROS using libroboint.
-Its is split in the Nodes:
+This contains a ROS package to control the fischertechnik Robo Explorer with ROS using libroboint.
+Its is split in the following Nodes:
 -libft_adapter: Accesses the Interface over libroboint.
  Inputs are send via ft/get_inputs message.
  Outputs are set with ft/set_output and ft/set_motor message.
--robo_explorer.py: Provides the Robo Explorer functions:
+-robo_explorer_hardware: Hardware functions for the ros_control DiffDriveController
+-robo_explorer.py: Provides additional Robo Explorer functions, e.g. sensors
 
-You need to use the Robo Explorer with Wheels instead of Tracks because the Tracks are too inaccurate for Odometry.
-I used the Wheel Setup from Mobile Robots 2.
-The world frame is "odom" since this setup is running without SLAM and amcl.
+The world frame of the navigation setup is "odom" since this robot is running without SLAM and amcl.
+
+Hardware setup:
+<---------->
+You need to use the Robo Explorer with wheels instead of tracks because the tracks are too inaccurate for Odometry.
+I used the two wheel Setup from Mobile Robots 2.
 
 
 Requirements:
 <---------->
-ROS - http://www.ros.org tested under Groovy
+ROS - http://www.ros.org tested under Groovy, Indigo, Kinetic
 libroboint - http://defiant.homedns.org/~erik/ft/libft/
 
 
 Author:
 <---------->
 Erik Andresen - erik@vontaene.de
-
-Please contact me for bugs or any suggestions
 
 
 Compiling/Installing:
