@@ -79,6 +79,7 @@ add_executable(robo_explorer_hardware src/robo_explorer_hardware.cpp)
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(libft_adapter roboint_gencpp)
+add_dependencies(robo_explorer_hardware roboint_gencpp)
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(roboint_node
